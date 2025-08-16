@@ -39,3 +39,4 @@ backend/
 ### Relatórios
 - `GET /api/reports/summary` - Resumo financeiro
 - `GET /api/reports/charts` - Dados para gráficos
+# backend3.0
