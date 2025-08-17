@@ -9,8 +9,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
-import config from '@/config';
-import Database from '@/config/database';
+import config from './config';
+import Database from './config/database';
 
 const app: Application = express();
 
@@ -43,15 +43,15 @@ if (config.server.nodeEnv === 'development') {
 const database = Database.getInstance();
 
 // Import routes
-import userRoutes from '@/routes/userRoutes';
-import salaryRoutes from '@/routes/salaryRoutes';
-import salaryUserRoutes from '@/routes/salaryUserRoutes';
-import expenseRoutes from '@/routes/expenseRoutes';
+import userRoutes from './routes/userRoutes';
+import salaryRoutes from './routes/salaryRoutes';
+import salaryUserRoutes from './routes/salaryUserRoutes';
+import expenseRoutes from './routes/expenseRoutes';
 
-import reminderRoutes from '@/routes/reminderRoutes';
-import investmentRoutes from '@/routes/investmentRoutes';
+import reminderRoutes from './routes/reminderRoutes';
+import investmentRoutes from './routes/investmentRoutes';
 
-import investmentEntryRoutes from '@/routes/investmentEntryRoutes';
+import investmentEntryRoutes from './routes/investmentEntryRoutes';
 import emergencyEntryRoutes from './routes/emergencyEntry';
 import emergencyExpenseRoutes from './routes/emergencyExpense';
 import viagemEntryRoutes from './routes/viagemEntry';
