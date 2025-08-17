@@ -62,6 +62,7 @@ export const addExpense = async (req: Request, res: Response) => {
   try {
     const { user, name, value, category, description, date } = req.body;
     if (!user || !name || typeof value !== 'number' || !category || !date) {
+      console.log('addExpense - Dados obrigatórios faltando:', { user, name, value, category, date });
       return res.status(400).json({ success: false, message: 'Dados obrigatórios faltando' });
     }
     const expense = await Expense.create({ user, name, value, category, description, date });
@@ -87,10 +88,11 @@ export const addExpense = async (req: Request, res: Response) => {
       });
     }
 
+    console.log('addExpense - Despesa criada:', expense);
     return res.json({ success: true, data: expense });
   } catch (error) {
-    console.error('Erro ao adicionar despesa:', error);
-    return res.status(500).json({ success: false, message: 'Erro ao adicionar despesa', error });
+    console.error('addExpense - Erro ao adicionar despesa:', error);
+  return res.status(500).json({ success: false, message: 'Erro ao adicionar despesa', error: typeof error === 'object' && error !== null && 'message' in error ? (error as any).message : String(error) });
   }
 };
 
