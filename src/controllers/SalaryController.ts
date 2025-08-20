@@ -1,3 +1,18 @@
+// Busca todos os salários de um usuário em um ano
+export const getUserAnnualSalary = async (req: Request, res: Response) => {
+  try {
+    const { userId, year } = req.params;
+    const firstDay = new Date(Number(year), 0, 1);
+    const lastDay = new Date(Number(year), 11, 31, 23, 59, 59, 999);
+    const salaries = await Salary.find({
+      user: userId,
+      date: { $gte: firstDay, $lte: lastDay }
+    });
+    res.json({ success: true, data: salaries });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro ao buscar salários anuais', error });
+  }
+};
 import { Request, Response } from 'express';
 import Salary from '../models/Salary';
 import mongoose from 'mongoose';
