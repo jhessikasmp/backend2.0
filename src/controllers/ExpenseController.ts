@@ -3,10 +3,10 @@ export const getUserAnnualExpenses = async (req: Request, res: Response) => {
   try {
     const { userId, year } = req.params;
     const firstDay = new Date(Number(year), 0, 1);
-    const lastDay = new Date(Number(year), 11, 31, 23, 59, 59, 999);
+    const lastDay = new Date(Number(year) + 1, 0, 1); // Corrigido para incluir todo o ano
     const expenses = await Expense.find({
       user: userId,
-      date: { $gte: firstDay, $lte: lastDay }
+      date: { $gte: firstDay, $lt: lastDay }
     });
     res.json({ success: true, data: expenses });
   } catch (error) {
