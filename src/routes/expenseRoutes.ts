@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { addExpense, getUserCurrentMonthExpenses, getCurrentMonthTotalExpenses, getUserAllExpenses, getAllUsersMonthlyExpenses, getUserAnnualExpenses } from '../controllers/ExpenseController';
-import { getAllExpenses } from '../controllers/ExpenseController';
-import { getAnnualExpensesByUser } from '../controllers/ExpenseController';
+import { addExpense, getUserCurrentMonthExpenses, getCurrentMonthTotalExpenses, getUserAllExpenses, getAllUsersMonthlyExpenses, getUserAnnualExpenses, getAllExpenses, debugAllExpenses, getAnnualExpensesByUser } from '../controllers/ExpenseController';
 
 const router = Router();
+
+// Endpoint de debug para listar todas as despesas
+router.get('/debug-all', debugAllExpenses);
 
 // POST /api/expense - Adiciona despesa
 router.post('/', addExpense);

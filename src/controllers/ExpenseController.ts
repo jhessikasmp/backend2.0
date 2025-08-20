@@ -1,3 +1,12 @@
+// Endpoint de debug para listar todas as despesas
+export const debugAllExpenses = async (req: Request, res: Response) => {
+  try {
+    const expenses = await Expense.find({}, { user: 1, value: 1, date: 1, name: 1, category: 1 }).sort({ date: -1 });
+    return res.json({ success: true, data: expenses });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao buscar despesas (debug)', error });
+  }
+};
 // Busca todas as despesas do usuário em um ano
 export const getUserAnnualExpenses = async (req: Request, res: Response) => {
   try {
