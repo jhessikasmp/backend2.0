@@ -1,3 +1,12 @@
+// Retorna todas as despesas de emergência (global)
+export const getAllEmergencyExpenses = async (req: Request, res: Response) => {
+  try {
+    const expenses = await EmergencyExpense.find({}).sort({ data: -1 });
+    res.json({ success: true, data: expenses });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Erro ao buscar todas as despesas', error: err });
+  }
+};
 import EmergencyExpense from '../models/EmergencyExpense';
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';

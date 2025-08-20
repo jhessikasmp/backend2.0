@@ -1,7 +1,10 @@
+
 import { Router } from 'express';
-import { addEmergencyExpense, getEmergencyExpenses, getEmergencyExpensesTotal, getEmergencyExpensesGrouped } from '../controllers/EmergencyExpenseController';
+import { addEmergencyExpense, getEmergencyExpenses, getEmergencyExpensesTotal, getEmergencyExpensesGrouped, getAllEmergencyExpenses } from '../controllers/EmergencyExpenseController';
 
 const router = Router();
+// GET /api/emergency-expense/all - Retorna todas as despesas de emergência
+router.get('/all', getAllEmergencyExpenses);
 
 
 router.post('/', addEmergencyExpense);
