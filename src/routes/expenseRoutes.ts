@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { addExpense, getUserCurrentMonthExpenses, getCurrentMonthTotalExpenses, getUserAllExpenses, getAllUsersMonthlyExpenses, getUserAnnualExpenses } from '../controllers/ExpenseController';
 import { getAllExpenses } from '../controllers/ExpenseController';
+import { getAnnualExpensesByUser } from '../controllers/ExpenseController';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.get('/user/:userId', getUserCurrentMonthExpenses);
 
 // GET /api/expense/user/:userId/year/:year - Lista todas as despesas do usuário no ano
 router.get('/user/:userId/year/:year', getUserAnnualExpenses);
+router.get('/annual-by-user/:year', getAnnualExpensesByUser);
 
 // GET /api/expense/current-month-total - Soma total das despesas do mês atual de todos os usuários
 router.get('/current-month-total', getCurrentMonthTotalExpenses);

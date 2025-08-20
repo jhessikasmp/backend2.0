@@ -13,6 +13,30 @@ export const getUserAnnualExpenses = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Erro ao buscar despesas anuais', error });
   }
 };
+// Retorna soma anual de despesas agrupadas por usuário
+export const getAnnualExpensesByUser = async (req: Request, res: Response) => {
+  try {
+    const { year } = req.params;
+    const firstDay = new Date(Number(year), 0, 1);
+    const lastDay = new Date(Number(year) + 1, 0, 1);
+    const result = await Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: firstDay, $lt: lastDay }
+        }
+      },
+      {
+        $group: {
+          _id: "$user",
+          total: { $sum: "$amount" }
+        }
+      }
+    ]);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro ao buscar despesas anuais agrupadas', error });
+  }
+};
 // Soma total das despesas de todos os usuários agrupado por mês
 export const getAllUsersMonthlyExpenses = async (req: Request, res: Response) => {
   try {
