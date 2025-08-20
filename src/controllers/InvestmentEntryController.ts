@@ -1,3 +1,18 @@
+// Lista todas as entradas de investimento de um ano (global)
+export const listInvestmentEntriesYear = async (req: Request, res: Response) => {
+  try {
+    const { year } = req.params;
+    if (!year) {
+      return res.status(400).json({ success: false, message: 'Ano é obrigatório' });
+    }
+    const firstDay = new Date(Number(year), 0, 1);
+    const lastDay = new Date(Number(year), 11, 31, 23, 59, 59, 999);
+    const entries = await InvestmentEntry.find({ date: { $gte: firstDay, $lte: lastDay } }).sort({ date: -1 });
+    return res.json({ success: true, data: entries });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao listar entradas anuais', error });
+  }
+};
 import { Request, Response } from 'express';
 import InvestmentEntry from '../models/InvestmentEntry';
 import Salary from '../models/Salary';
