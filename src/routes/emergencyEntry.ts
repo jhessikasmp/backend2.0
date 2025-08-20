@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addEmergencyEntry, getEmergencyEntries, getEmergencyEntriesYear } from '../controllers/EmergencyEntryController';
+import { addEmergencyEntry, getEmergencyEntries, getEmergencyEntriesYear, getTotalEmergencyEntries } from '../controllers/EmergencyEntryController';
 
 const router = Router();
 
@@ -11,5 +11,6 @@ router.get('/year/:userId/:year', getEmergencyEntriesYear);
 // Nova rota global para entradas anuais
 import { getAllEmergencyEntriesYear } from '../controllers/EmergencyEntryController';
 router.get('/year/:year', getAllEmergencyEntriesYear);
+router.get('/total', getTotalEmergencyEntries);
 
 export default router;

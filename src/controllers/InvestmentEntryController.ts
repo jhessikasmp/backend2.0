@@ -13,6 +13,23 @@ export const listInvestmentEntriesYear = async (req: Request, res: Response) => 
     return res.status(500).json({ success: false, message: 'Erro ao listar entradas anuais', error });
   }
 };
+  // Soma total de todas as entradas de investimento (global, independente do ano)
+  export const getTotalInvestmentEntries = async (req: Request, res: Response) => {
+    try {
+      const result = await InvestmentEntry.aggregate([
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$value" }
+          }
+        }
+      ]);
+      const total = result.length > 0 ? result[0].total : 0;
+      return res.json({ success: true, total });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Erro ao calcular total de entradas de investimento', error });
+    }
+  };
 import { Request, Response } from 'express';
 import InvestmentEntry from '../models/InvestmentEntry';
 import Salary from '../models/Salary';

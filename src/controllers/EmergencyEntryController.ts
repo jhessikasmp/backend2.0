@@ -1,3 +1,20 @@
+// Soma total de todas as entradas de emergência (global, independente do ano)
+export const getTotalEmergencyEntries = async (req: Request, res: Response) => {
+  try {
+    const result = await EmergencyEntry.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$valor" }
+        }
+      }
+    ]);
+    const total = result.length > 0 ? result[0].total : 0;
+    return res.json({ success: true, total });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao calcular total de entradas de emergência', error });
+  }
+};
 // Busca todas as entradas do ano atual (global, sem userId)
 export const getAllEmergencyEntriesYear = async (req: Request, res: Response) => {
   try {

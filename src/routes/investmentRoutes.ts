@@ -1,7 +1,10 @@
+
 import { Router } from 'express';
+// Removido: entradas de investimento
 import { addInvestment, listInvestments, editInvestment, deleteInvestment, listAllInvestments } from '../controllers/InvestmentController';
 
 const router = Router();
+// Rotas de entradas de investimento devem estar em investmentEntryRoutes.ts
 
 // GET /api/investment/all - Lista todos os investimentos de todos os usuários
 router.get('/all', listAllInvestments);
