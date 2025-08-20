@@ -1,3 +1,12 @@
+// Busca todas as despesas de viagem (global, sem userId)
+export const getAllViagemExpenses = async (req: Request, res: Response) => {
+  try {
+    const expenses = await ViagemExpense.find({}).sort({ data: -1 });
+    res.json({ success: true, data: expenses });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Erro ao buscar despesas globais', error: err });
+  }
+};
 import ViagemExpense from '../models/ViagemExpense';
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
