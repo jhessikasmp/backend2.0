@@ -28,7 +28,7 @@ export const getAnnualExpensesByUser = async (req: Request, res: Response) => {
       {
         $group: {
           _id: "$user",
-          total: { $sum: "$amount" }
+          total: { $sum: "$value" }
         }
       }
     ]);
