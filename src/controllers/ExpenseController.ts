@@ -1,3 +1,63 @@
+import { Request, Response } from 'express';
+import Expense from '../models/Expense';
+import Salary from '../models/Salary';
+// ...existing code...
+
+// Soma anual de despesas + entradas de todas as coleções por usuário
+export const getAnnualTotalWithEntriesByUser = async (req: Request, res: Response) => {
+  try {
+    const { year } = req.params;
+    if (!year) return res.status(400).json({ success: false, message: 'Ano é obrigatório' });
+    const firstDay = new Date(Number(year), 0, 1);
+    const lastDay = new Date(Number(year) + 1, 0, 1);
+
+    // Expenses
+    const expenses = await Expense.aggregate([
+      { $match: { date: { $gte: firstDay, $lt: lastDay } } },
+      { $group: { _id: "$user", total: { $sum: "$value" } } }
+    ]);
+
+    // InvestmentEntry
+    const investmentEntries = await InvestmentEntry.aggregate([
+      { $match: { date: { $gte: firstDay, $lt: lastDay } } },
+      { $group: { _id: "$user", total: { $sum: "$value" } } }
+    ]);
+    // EmergencyEntry
+    const emergencyEntries = await EmergencyEntry.aggregate([
+      { $match: { data: { $gte: firstDay, $lt: lastDay } } },
+      { $group: { _id: "$user", total: { $sum: "$valor" } } }
+    ]);
+    // ViagemEntry
+    const viagemEntries = await ViagemEntry.aggregate([
+      { $match: { data: { $gte: firstDay, $lt: lastDay } } },
+      { $group: { _id: "$user", total: { $sum: "$valor" } } }
+    ]);
+    // CarroEntry
+    const carroEntries = await CarroEntry.aggregate([
+      { $match: { data: { $gte: firstDay, $lt: lastDay } } },
+      { $group: { _id: "$user", total: { $sum: "$valor" } } }
+    ]);
+    // MesadaEntry
+    const mesadaEntries = await MesadaEntry.aggregate([
+      { $match: { data: { $gte: firstDay, $lt: lastDay } } },
+      { $group: { _id: "$user", total: { $sum: "$valor" } } }
+    ]);
+
+    // Agrupa por usuário
+    const userTotals: Record<string, number> = {};
+    for (const arr of [expenses, investmentEntries, emergencyEntries, viagemEntries, carroEntries, mesadaEntries]) {
+      arr.forEach(e => {
+        const id = String(e._id);
+        userTotals[id] = (userTotals[id] || 0) + (e.total || 0);
+      });
+    }
+    // Formata para frontend
+    const result = Object.entries(userTotals).map(([userId, total]) => ({ _id: userId, total }));
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao calcular despesas anuais com entradas', error });
+  }
+};
 // Soma despesas e entradas do mês atual
 export const getCurrentMonthTotalWithEntries = async (req: Request, res: Response) => {
   try {
@@ -170,9 +230,7 @@ export const getAllExpenses = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: 'Erro ao buscar despesas de todos os usuários', error });
   }
 };
-import { Request, Response } from 'express';
-import Expense from '../models/Expense';
-import Salary from '../models/Salary';
+// ...existing code...
 
 // Adiciona uma nova despesa
 export const addExpense = async (req: Request, res: Response) => {
