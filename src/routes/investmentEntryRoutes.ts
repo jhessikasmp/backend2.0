@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { addInvestmentEntry, listInvestmentEntries, listInvestmentEntriesYear } from '../controllers/InvestmentEntryController';
+import { addInvestmentEntry, listInvestmentEntries, listInvestmentEntriesYear, getTotalInvestmentEntries } from '../controllers/InvestmentEntryController';
 
 const router = Router();
+// GET /api/investment-entry/total - Soma total global de entradas de investimento
+router.get('/total', getTotalInvestmentEntries);
 
 // POST /api/investment-entry - Adiciona entrada de investimento
 router.post('/', addInvestmentEntry);
