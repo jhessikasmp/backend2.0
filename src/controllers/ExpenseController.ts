@@ -1,3 +1,48 @@
+// Soma despesas e entradas do mês atual
+export const getCurrentMonthTotalWithEntries = async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    const expenseTotal = await Expense.aggregate([
+      { $match: { date: { $gte: firstDay, $lte: lastDay } } },
+      { $group: { _id: null, total: { $sum: "$value" } } }
+    ]);
+    const investmentTotal = await require('../models/InvestmentEntry').default.aggregate([
+      { $match: { date: { $gte: firstDay, $lte: lastDay } } },
+      { $group: { _id: null, total: { $sum: "$value" } } }
+    ]);
+    const emergencyTotal = await require('../models/EmergencyEntry').default.aggregate([
+      { $match: { data: { $gte: firstDay, $lte: lastDay } } },
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const viagemTotal = await require('../models/ViagemEntry').default.aggregate([
+      { $match: { data: { $gte: firstDay, $lte: lastDay } } },
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const carroTotal = await require('../models/CarroEntry').default.aggregate([
+      { $match: { data: { $gte: firstDay, $lte: lastDay } } },
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const mesadaTotal = await require('../models/MesadaEntry').default.aggregate([
+      { $match: { data: { $gte: firstDay, $lte: lastDay } } },
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const total =
+      (expenseTotal[0]?.total || 0) +
+      (investmentTotal[0]?.total || 0) +
+      (emergencyTotal[0]?.total || 0) +
+      (viagemTotal[0]?.total || 0) +
+      (carroTotal[0]?.total || 0) +
+      (mesadaTotal[0]?.total || 0);
+    return res.json({ success: true, total });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao calcular despesas do mês com entradas', error });
+  }
+};
 // Soma total de despesas considerando também as entradas de outras coleções
 import InvestmentEntry from '../models/InvestmentEntry';
 import EmergencyEntry from '../models/EmergencyEntry';
