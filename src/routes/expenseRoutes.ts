@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { addExpense, getUserCurrentMonthExpenses, getCurrentMonthTotalExpenses, getUserAllExpenses, getAllUsersMonthlyExpenses, getUserAnnualExpenses, getAllExpenses, debugAllExpenses, getAnnualExpensesByUser } from '../controllers/ExpenseController';
+import { addExpense, getUserCurrentMonthExpenses, getCurrentMonthTotalExpenses, getUserAllExpenses, getAllUsersMonthlyExpenses, getUserAnnualExpenses, getAllExpenses, debugAllExpenses, getAnnualExpensesByUser, getTotalWithEntries } from '../controllers/ExpenseController';
 
 const router = Router();
+// GET /api/expense/total-with-entries - Soma total de despesas considerando entradas de outras coleções
+router.get('/total-with-entries', getTotalWithEntries);
 
 // Endpoint de debug para listar todas as despesas
 router.get('/debug-all', debugAllExpenses);

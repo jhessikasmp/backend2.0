@@ -1,3 +1,42 @@
+// Soma total de despesas considerando também as entradas de outras coleções
+import InvestmentEntry from '../models/InvestmentEntry';
+import EmergencyEntry from '../models/EmergencyEntry';
+import ViagemEntry from '../models/ViagemEntry';
+import CarroEntry from '../models/CarroEntry';
+import MesadaEntry from '../models/MesadaEntry';
+
+export const getTotalWithEntries = async (req: Request, res: Response) => {
+  try {
+    const expenseTotal = await Expense.aggregate([
+      { $group: { _id: null, total: { $sum: "$value" } } }
+    ]);
+    const investmentTotal = await InvestmentEntry.aggregate([
+      { $group: { _id: null, total: { $sum: "$value" } } }
+    ]);
+    const emergencyTotal = await EmergencyEntry.aggregate([
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const viagemTotal = await ViagemEntry.aggregate([
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const carroTotal = await CarroEntry.aggregate([
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const mesadaTotal = await MesadaEntry.aggregate([
+      { $group: { _id: null, total: { $sum: "$valor" } } }
+    ]);
+    const total =
+      (expenseTotal[0]?.total || 0) +
+      (investmentTotal[0]?.total || 0) +
+      (emergencyTotal[0]?.total || 0) +
+      (viagemTotal[0]?.total || 0) +
+      (carroTotal[0]?.total || 0) +
+      (mesadaTotal[0]?.total || 0);
+    return res.json({ success: true, total });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao calcular despesas totais com entradas', error });
+  }
+};
 // Endpoint de debug para listar todas as despesas
 export const debugAllExpenses = async (req: Request, res: Response) => {
   try {
