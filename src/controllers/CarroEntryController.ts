@@ -1,5 +1,16 @@
 import CarroEntry from '../models/CarroEntry';
 import { Request, Response } from 'express';
+// Retorna o total de entradas de carro de um usuário
+export const getCarroEntriesTotal = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const entries = await CarroEntry.find({ user: userId });
+    const total = entries.reduce((sum, e) => sum + (e.valor || 0), 0);
+    res.json({ success: true, total });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Erro ao buscar total de entradas de carro', error: err });
+  }
+};
 
 export const addCarroEntry = async (req: Request, res: Response) => {
   try {
