@@ -6,6 +6,8 @@ export const getCarroEntriesTotal = async (req: Request, res: Response) => {
     const { userId } = req.params;
     const entries = await CarroEntry.find({ user: userId });
     const total = entries.reduce((sum, e) => sum + (e.valor || 0), 0);
+    console.log('Entradas de carro encontradas:', entries);
+    console.log('Total calculado:', total);
     res.json({ success: true, total });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Erro ao buscar total de entradas de carro', error: err });
@@ -42,4 +44,4 @@ export const getCarroEntriesYear = async (req: Request, res: Response) => {
   } catch (err) {
     res.status(500).json({ success: false, message: 'Erro ao buscar entradas do ano', error: err });
   }
-};
+}// alguma coisa
