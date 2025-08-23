@@ -28,19 +28,17 @@ export const upsertSalary = async (req: Request, res: Response) => {
     const firstDay = new Date(salaryDate.getFullYear(), salaryDate.getMonth(), 1);
     const lastDay = new Date(salaryDate.getFullYear(), salaryDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // Atualiza se já existe salário para o mês, senão cria
-    const salary = await Salary.findOneAndUpdate(
-      {
-        user,
-        date: { $gte: firstDay, $lte: lastDay }
-      },
-      {
-        user,
-        value,
-        date: salaryDate
-      },
-      { upsert: true, new: true }
-    );
+    // Verifica se já existe salário para o mês
+    const existingSalary = await Salary.findOne({
+      user,
+      date: { $gte: firstDay, $lte: lastDay }
+    });
+    if (existingSalary) {
+      return res.status(409).json({ success: false, message: 'Já existe salário cadastrado para este mês. Salários não podem ser alterados.' });
+    }
+
+    // Cria novo salário
+    const salary = await Salary.create({ user, value, date: salaryDate });
     return res.json({ success: true, data: salary });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Erro ao salvar salário', error });
