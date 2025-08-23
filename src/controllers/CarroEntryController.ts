@@ -1,3 +1,4 @@
+// Modificação forçada para commit: ajuste de comentário
 import CarroEntry from '../models/CarroEntry';
 import { Request, Response } from 'express';
 // Retorna o total de entradas de carro de um usuário
