@@ -8,4 +8,5 @@ npm-debug.log*
 .vscode/
 coverage/
 build/
-credentials.json
+credentials.jsontoken.json
+token.json
