@@ -10,3 +10,4 @@ coverage/
 build/
 credentials.jsontoken.json
 token.json
+credentials.json
