@@ -6,7 +6,11 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 const TOKEN_PATH = path.join(process.cwd(), 'token.json');
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
 
+
 function loadCredentials() {
+  if (process.env.GOOGLE_CREDENTIALS_JSON) {
+    return JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+  }
   const content = fs.readFileSync(CREDENTIALS_PATH, 'utf8');
   return JSON.parse(content);
 }
