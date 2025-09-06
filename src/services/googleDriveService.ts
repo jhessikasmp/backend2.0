@@ -20,7 +20,10 @@ export async function authorize() {
   const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
   const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
-  if (fs.existsSync(TOKEN_PATH)) {
+  if (process.env.GOOGLE_TOKEN_JSON) {
+    oAuth2Client.setCredentials(JSON.parse(process.env.GOOGLE_TOKEN_JSON));
+    return oAuth2Client;
+  } else if (fs.existsSync(TOKEN_PATH)) {
     const token = fs.readFileSync(TOKEN_PATH, 'utf8');
     oAuth2Client.setCredentials(JSON.parse(token));
     return oAuth2Client;
