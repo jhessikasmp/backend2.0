@@ -20,8 +20,14 @@ import Salary from '../models/Salary';
 export const upsertSalary = async (req: Request, res: Response) => {
   try {
     const { user, value, date } = req.body;
-    if (!user || typeof value !== 'number' || !date) {
+    if (!user || !date) {
       res.status(400).json({ success: false, message: 'Dados inválidos' });
+      return;
+    }
+    // Garante que o valor seja número positivo
+    let parsedValue = Number(value);
+    if (isNaN(parsedValue) || parsedValue <= 0) {
+      res.status(400).json({ success: false, message: 'Valor de salário inválido' });
       return;
     }
     const salaryDate = new Date(date);
@@ -38,7 +44,7 @@ export const upsertSalary = async (req: Request, res: Response) => {
     }
 
     // Cria novo salário
-    const salary = await Salary.create({ user, value, date: salaryDate });
+    const salary = await Salary.create({ user, value: parsedValue, date: salaryDate });
     return res.json({ success: true, data: salary });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Erro ao salvar salário', error });

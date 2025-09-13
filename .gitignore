@@ -11,3 +11,4 @@ build/
 credentials.jsontoken.json
 token.json
 credentials.json
+generateToken.js
