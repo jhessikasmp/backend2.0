@@ -242,26 +242,8 @@ export const addExpense = async (req: Request, res: Response) => {
     }
     const expense = await Expense.create({ user, name, value, category, description, date });
 
-    // Subtrair valor da despesa do salário do mês do usuário
-    const expenseDate = new Date(date);
-    const firstDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
-    const lastDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth() + 1, 0, 23, 59, 59, 999);
-    const salaryDoc = await Salary.findOne({
-      user: user,
-      date: { $gte: firstDay, $lte: lastDay }
-    });
-
-    if (salaryDoc) {
-      salaryDoc.value -= value;
-      await salaryDoc.save();
-    } else {
-      // Cria salário negativo para o mês
-      await Salary.create({
-        user: user,
-        value: -value,
-        date: expenseDate
-      });
-    }
+    // ATENÇÃO: Nunca modificar documentos de Salário ao registrar despesas.
+    // O saldo deve ser calculado dinamicamente: total de salários do mês - total de despesas/entradas do mês.
 
     console.log('addExpense - Despesa criada:', expense);
     return res.json({ success: true, data: expense });

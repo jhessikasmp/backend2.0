@@ -59,6 +59,9 @@ import emergencyEntryRoutes from './routes/emergencyEntry';
 import emergencyExpenseRoutes from './routes/emergencyExpense';
 import viagemEntryRoutes from './routes/viagemEntry';
 import viagemExpenseRoutes from './routes/viagemExpense';
+import summaryRoutes from './routes/summaryRoutes';
+import investmentAnnualReturnRoutes from './routes/investmentAnnualReturnRoutes';
+import annualReportRoutes from './routes/annualReportRoutes';
 
 // Routes
 app.use('/api/users', userRoutes);
@@ -77,6 +80,9 @@ app.use('/api/carro-expense', carroExpenseRoutes);
 app.use('/api/mesada-entry', mesadaEntryRoutes);
 app.use('/api/mesada-expense', mesadaExpenseRoutes);
 app.use('/api/monthly-report', monthlyReportRoutes);
+app.use('/api/summary', summaryRoutes);
+app.use('/api/investment-returns', investmentAnnualReturnRoutes);
+app.use('/api/annual-report', annualReportRoutes);
 // app.use('/api/transactions', require('./routes/transactions'));
 // app.use('/api/categories', require('./routes/categories'));
 // app.use('/api/reports', require('./routes/reports'));
@@ -158,6 +164,20 @@ cron.schedule('10 0 1 * *', async () => {
     } as any);
   } catch (err) {
     console.error('Erro no agendamento do relatório mensal:', err);
+  }
+});
+
+// Agendamento anual: 31 de dezembro às 23:50
+cron.schedule('50 23 31 12 *', async () => {
+  console.log('⏰ Gerando relatório anual automático...');
+  try {
+    const { generateAndSendAnnualReport } = await import('./controllers/annualReportController');
+    await generateAndSendAnnualReport({} as any, {
+      json: (data: any) => console.log('Relatório anual gerado e enviado:', data),
+      status: (code: number) => ({ json: (data: any) => console.log('Erro ao gerar relatório anual:', code, data) })
+    } as any);
+  } catch (err) {
+    console.error('Erro no agendamento do relatório anual:', err);
   }
 });
 

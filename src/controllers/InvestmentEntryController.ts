@@ -44,20 +44,8 @@ export const addInvestmentEntry = async (req: Request, res: Response) => {
     // Cria a entrada (date será default)
     const entry = await InvestmentEntry.create({ user, value, moeda });
 
-    // Subtrai do salário do mês
-    const entryDate = entry.date;
-    const firstDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), 1);
-    const lastDay = new Date(entryDate.getFullYear(), entryDate.getMonth() + 1, 0, 23, 59, 59, 999);
-    const salaryDoc = await Salary.findOne({
-      user: user,
-      date: { $gte: firstDay, $lte: lastDay }
-    });
-    if (salaryDoc) {
-      salaryDoc.value -= value;
-      await salaryDoc.save();
-    } else {
-      await Salary.create({ user: user, value: -value, date: entryDate });
-    }
+    // ATENÇÃO: Não alterar documentos de Salário ao registrar entradas de investimento.
+    // O saldo deve ser calculado dinamicamente no consumo (dashboard/relatórios).
 
     return res.json({ success: true, data: entry });
   } catch (error) {
