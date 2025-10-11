@@ -71,12 +71,14 @@ export async function generateAndSendMonthlyReport(req: Request, res: Response) 
       }
     };
     for (const user of users) {
+      console.log(`Gerando dados para usuário: ${user._id} - ${user.name}`);
       // Buscar salário do mês (um por mês por regra do sistema)
       const salaryDoc = await Salary.findOne({
         user: user._id,
         date: { $gte: firstDay, $lte: lastDay }
       });
       const salary = salaryDoc ? salaryDoc.value : 0;
+      console.log(`  salário encontrado: ${salary} (doc: ${salaryDoc?._id || 'nenhum'})`);
 
       // Despesas do mês
       const expensesArr = await Expense.find({
@@ -84,6 +86,7 @@ export async function generateAndSendMonthlyReport(req: Request, res: Response) 
         date: { $gte: firstDay, $lte: lastDay }
       });
       const expenses = expensesArr.reduce((sum, exp) => sum + exp.value, 0);
+      console.log(`  despesas encontradas: ${expensesArr.length} itens, total ${expenses}`);
 
       // Outras saídas (entradas) do mês
       const [invEntries, emeSum, viaSum, carSum, mesSum] = await Promise.all([
@@ -107,15 +110,17 @@ export async function generateAndSendMonthlyReport(req: Request, res: Response) 
       ]);
       // Converter entradas de investimento para BRL
       const invEntriesTotalBRL = invEntries.reduce((sum, e: any) => sum + toBRL(e.value, e.moeda), 0);
+  console.log(`  entradas investimento (aportes) encontradas: ${invEntries.length}, total BRL ${invEntriesTotalBRL}`);
       const entriesTotal = invEntriesTotalBRL + (emeSum[0]?.total || 0) + (viaSum[0]?.total || 0) + (carSum[0]?.total || 0) + (mesSum[0]?.total || 0);
 
+  console.log(`  outras saídas (entries/fundos) total BRL: ${entriesTotal}`);
+
       // Total de Ativos (Investimentos) - snapshot até o fim do mês
-      const investments = await Investment.find({
-        user: user._id,
-        data: { $lte: lastDay }
-      });
+      const investments = await Investment.find({ user: user._id, data: { $lte: lastDay } });
+      console.log(`  investimentos (snapshot) encontrados: ${investments.length}`);
   const assetsTotalBRL = investments.reduce((sum, inv) => sum + toBRL(inv.valor, inv.moeda), 0);
   const assetsTotalEUR = investments.reduce((sum, inv) => sum + toEUR(inv.valor, inv.moeda), 0);
+      console.log(`  ativos total BRL: ${assetsTotalBRL}, EUR: ${assetsTotalEUR}`);
 
       reportData.push({
         name: user.name,
