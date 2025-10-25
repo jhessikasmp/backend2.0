@@ -17,9 +17,11 @@ import MesadaExpense from '../models/MesadaExpense';
 // Relatório customizado com período específico
 export async function generateCustomPeriodReport(req: Request, res: Response): Promise<void> {
   try {
-    const { startDate, endDate } = req.query;
+    // Aceita tanto via query (GET) quanto via body (POST)
+    const startDateRaw = (req.query.startDate as string) || (req.body?.startDate as string);
+    const endDateRaw = (req.query.endDate as string) || (req.body?.endDate as string);
 
-    if (!startDate || !endDate) {
+    if (!startDateRaw || !endDateRaw) {
       res.status(400).json({ 
         success: false, 
         error: 'Parâmetros startDate e endDate são obrigatórios (formato: YYYY-MM-DD)' 
@@ -27,8 +29,8 @@ export async function generateCustomPeriodReport(req: Request, res: Response): P
       return;
     }
 
-    const start = new Date(startDate as string);
-    const end = new Date(endDate as string);
+    const start = new Date(startDateRaw);
+    const end = new Date(endDateRaw);
     end.setHours(23, 59, 59, 999); // Final do dia
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
@@ -81,7 +83,7 @@ export async function generateCustomPeriodReport(req: Request, res: Response): P
     };
 
     for (const user of users) {
-      console.log(`Gerando dados para usuário: ${user._id} - ${user.name} (${startDate} a ${endDate})`);
+  console.log(`Gerando dados para usuário: ${user._id} - ${user.name} (${startDateRaw} a ${endDateRaw})`);
       
       // Buscar salários do período
       const salaries = await Salary.find({
@@ -144,7 +146,7 @@ export async function generateCustomPeriodReport(req: Request, res: Response): P
     const pdfBuffer = await generateMonthlyReportPDF(reportData, `${startStr} a ${endStr}`, new Date().getFullYear());
 
     // Retornar PDF como download
-    const fileName = `relatorio-periodo-${startDate}-${endDate}.pdf`;
+  const fileName = `relatorio-periodo-${startDateRaw}-${endDateRaw}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.send(pdfBuffer);

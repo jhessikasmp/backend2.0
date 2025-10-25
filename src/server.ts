@@ -92,6 +92,34 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
+// Endpoint de diagnóstico para listar rotas ativas
+app.get('/api/_routes', (req: Request, res: Response) => {
+  const routes: Array<{ method: string; path: string }> = [];
+  const anyApp: any = app as any;
+  anyApp._router?.stack?.forEach((layer: any) => {
+    if (layer.route && layer.route.path) {
+      const methods = Object.keys(layer.route.methods || {}).filter(Boolean);
+      methods.forEach((m) => routes.push({ method: m.toUpperCase(), path: layer.route.path }));
+    } else if (layer.name === 'router' && layer.handle?.stack) {
+      layer.handle.stack.forEach((h: any) => {
+        const route = h.route;
+        if (route) {
+          const methods = Object.keys(route.methods || {}).filter(Boolean);
+          const prefix = layer.regexp && layer.regexp.fast_star ? '' : (layer.regexp?.toString() || '');
+          // Tenta extrair o prefixo de path do regex (heurística simples)
+          let base = '';
+          if (layer.regexp && layer.regexp.fast_slash) base = '/';
+          // Quando o router é montado via app.use('/api/reports', router)
+          // o regexp costuma conter o prefixo '/api/reports'. Vamos tentar guardar isso manualmente:
+          // Como alternativa simples, só listamos os paths do route e o consumidor saberá o prefixo externo.
+          methods.forEach((m) => routes.push({ method: m.toUpperCase(), path: route.path }));
+        }
+      });
+    }
+  });
+  res.json({ count: routes.length, routes });
+});
+
 // 404 handler
 app.use('*', (req: Request, res: Response) => {
   res.status(404).json({
