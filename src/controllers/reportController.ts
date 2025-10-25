@@ -92,39 +92,68 @@ export async function generateCustomPeriodReport(req: Request, res: Response): P
       });
       const salary = salaries.reduce((sum, s) => sum + s.value, 0);
 
-      // Despesas por categoria no período
+      // Despesas por categoria no período (Expense)
       const expensesAgg = await Expense.aggregate([
         { $match: { user: user._id, date: { $gte: start, $lte: end } } },
         { $group: { _id: '$category', total: { $sum: '$value' } } },
         { $sort: { total: -1 } }
       ]);
-      const expensesByCategory: CategoryTotal[] = expensesAgg.map((c: any) => ({ label: c._id, total: c.total }));
-      const expensesTotal = expensesByCategory.reduce((a, b) => a + b.total, 0);
+      let expensesByCategory: CategoryTotal[] = expensesAgg.map((c: any) => ({ label: c._id, total: c.total }));
 
-      // Saldos dos fundos até o fim do período (acumulado)
-      const [emeInAgg, emeOutAgg, viaInAgg, viaOutAgg, carInAgg, carOutAgg] = await Promise.all([
-        EmergencyEntry.aggregate([
-          { $match: { user: user._id, data: { $lte: end } } },
-          { $group: { _id: null, total: { $sum: '$valor' } } }
+      // Entradas de fundos no período DEVEM aparecer como despesas no PDF
+      const [invInPeriodAgg, emeInPeriodAgg, viaInPeriodAgg, carInPeriodAgg] = await Promise.all([
+        InvestmentEntry.aggregate([
+          { $match: { user: user._id, date: { $gte: start, $lte: end } } },
+          { $group: { _id: null, total: { $sum: '$value' } } }
         ]),
-        EmergencyExpense.aggregate([
-          { $match: { user: user._id, data: { $lte: end } } },
+        EmergencyEntry.aggregate([
+          { $match: { user: user._id, data: { $gte: start, $lte: end } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         ViagemEntry.aggregate([
-          { $match: { user: user._id, data: { $lte: end } } },
-          { $group: { _id: null, total: { $sum: '$valor' } } }
-        ]),
-        ViagemExpense.aggregate([
-          { $match: { user: user._id, data: { $lte: end } } },
+          { $match: { user: user._id, data: { $gte: start, $lte: end } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         CarroEntry.aggregate([
-          { $match: { user: user._id, data: { $lte: end } } },
+          { $match: { user: user._id, data: { $gte: start, $lte: end } } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ])
+      ]);
+
+      const fundEntriesAsExpenses: CategoryTotal[] = [
+        { label: 'Entrada Investimento', total: invInPeriodAgg[0]?.total || 0 },
+        { label: 'Entrada Emergência', total: emeInPeriodAgg[0]?.total || 0 },
+        { label: 'Entrada Viagem', total: viaInPeriodAgg[0]?.total || 0 },
+        { label: 'Entrada Carro', total: carInPeriodAgg[0]?.total || 0 },
+      ].filter((c) => c.total > 0);
+
+      expensesByCategory = [...expensesByCategory, ...fundEntriesAsExpenses];
+      const expensesTotal = expensesByCategory.reduce((a, b) => a + b.total, 0);
+
+      // Saldos dos fundos (globais - vida toda)
+      const [emeInAgg, emeOutAgg, viaInAgg, viaOutAgg, carInAgg, carOutAgg] = await Promise.all([
+        EmergencyEntry.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        EmergencyExpense.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        ViagemEntry.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        ViagemExpense.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        CarroEntry.aggregate([
+          { $match: { user: user._id } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         CarroExpense.aggregate([
-          { $match: { user: user._id, data: { $lte: end } } },
+          { $match: { user: user._id } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ])
       ]);
@@ -222,39 +251,68 @@ export async function generateMonthlyReportDownload(req: Request, res: Response)
       });
       const salary = salariesMonth.reduce((sum, s) => sum + s.value, 0);
 
-      // Despesas por categoria (apenas Expense)
+      // Despesas por categoria do mês (Expense)
       const expensesAgg = await Expense.aggregate([
         { $match: { user: user._id, date: { $gte: firstDay, $lte: lastDay } } },
         { $group: { _id: '$category', total: { $sum: '$value' } } },
         { $sort: { total: -1 } }
       ]);
-      const expensesByCategory: CategoryTotal[] = expensesAgg.map((c: any) => ({ label: c._id, total: c.total }));
-      const expensesTotal = expensesByCategory.reduce((a, b) => a + b.total, 0);
+      let expensesByCategory: CategoryTotal[] = expensesAgg.map((c: any) => ({ label: c._id, total: c.total }));
 
-      // Fundos - Saldo até o fim do mês (entradas acumuladas - despesas acumuladas)
-      const [emeInAgg, emeOutAgg, viaInAgg, viaOutAgg, carInAgg, carOutAgg] = await Promise.all([
-        EmergencyEntry.aggregate([
-          { $match: { user: user._id, data: { $lte: lastDay } } },
-          { $group: { _id: null, total: { $sum: '$valor' } } }
+      // Entradas de fundos do mês DEVEM aparecer como despesas no PDF
+      const [invInMonthAgg, emeInMonthAgg, viaInMonthAgg, carInMonthAgg] = await Promise.all([
+        InvestmentEntry.aggregate([
+          { $match: { user: user._id, date: { $gte: firstDay, $lte: lastDay } } },
+          { $group: { _id: null, total: { $sum: '$value' } } }
         ]),
-        EmergencyExpense.aggregate([
-          { $match: { user: user._id, data: { $lte: lastDay } } },
+        EmergencyEntry.aggregate([
+          { $match: { user: user._id, data: { $gte: firstDay, $lte: lastDay } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         ViagemEntry.aggregate([
-          { $match: { user: user._id, data: { $lte: lastDay } } },
-          { $group: { _id: null, total: { $sum: '$valor' } } }
-        ]),
-        ViagemExpense.aggregate([
-          { $match: { user: user._id, data: { $lte: lastDay } } },
+          { $match: { user: user._id, data: { $gte: firstDay, $lte: lastDay } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         CarroEntry.aggregate([
-          { $match: { user: user._id, data: { $lte: lastDay } } },
+          { $match: { user: user._id, data: { $gte: firstDay, $lte: lastDay } } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ])
+      ]);
+
+      const fundEntriesAsExpensesMonth: CategoryTotal[] = [
+        { label: 'Entrada Investimento', total: invInMonthAgg[0]?.total || 0 },
+        { label: 'Entrada Emergência', total: emeInMonthAgg[0]?.total || 0 },
+        { label: 'Entrada Viagem', total: viaInMonthAgg[0]?.total || 0 },
+        { label: 'Entrada Carro', total: carInMonthAgg[0]?.total || 0 },
+      ].filter((c) => c.total > 0);
+
+      expensesByCategory = [...expensesByCategory, ...fundEntriesAsExpensesMonth];
+      const expensesTotal = expensesByCategory.reduce((a, b) => a + b.total, 0);
+
+      // Fundos - Saldo global (vida toda): entradas acumuladas - despesas acumuladas
+      const [emeInAgg, emeOutAgg, viaInAgg, viaOutAgg, carInAgg, carOutAgg] = await Promise.all([
+        EmergencyEntry.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        EmergencyExpense.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        ViagemEntry.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        ViagemExpense.aggregate([
+          { $match: { user: user._id } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        CarroEntry.aggregate([
+          { $match: { user: user._id } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         CarroExpense.aggregate([
-          { $match: { user: user._id, data: { $lte: lastDay } } },
+          { $match: { user: user._id } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ])
       ]);
@@ -328,7 +386,7 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       { $match: { date: { $gte: start, $lte: end } } },
       { $group: { _id: null, total: { $sum: '$value' } } }
     ]);
-    const expensesTotalBRL = expensesAgg[0]?.total || 0;
+    let expensesTotalBRL = expensesAgg[0]?.total || 0;
 
     const [invEntriesAgg, emeEntriesAgg, viaEntriesAgg, carEntriesAgg] = await Promise.all([
       InvestmentEntry.aggregate([
@@ -384,7 +442,20 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       { $group: { _id: '$category', total: { $sum: '$value' } } },
       { $sort: { total: -1 } }
     ]);
-    const expenseCategories: AnnualCategoryTotal[] = expenseCategoriesAgg.map((c) => ({ label: c._id, total: c.total }));
+    let expenseCategories: AnnualCategoryTotal[] = expenseCategoriesAgg.map((c) => ({ label: c._id, total: c.total }));
+
+    // Entradas de fundos no ano DEVEM aparecer como despesas no PDF (categorias extras)
+    const entriesAsExpenses: AnnualCategoryTotal[] = [
+      { label: 'Entrada Investimento', total: invEntriesAgg[0]?.total || 0 },
+      { label: 'Entrada Emergência', total: emeEntriesAgg[0]?.total || 0 },
+      { label: 'Entrada Viagem', total: viaEntriesAgg[0]?.total || 0 },
+      { label: 'Entrada Carro', total: carEntriesAgg[0]?.total || 0 },
+    ].filter((c) => c.total > 0);
+
+    if (entriesAsExpenses.length > 0) {
+      expenseCategories = [...expenseCategories, ...entriesAsExpenses];
+      expensesTotalBRL += entriesAsExpenses.reduce((a, b) => a + b.total, 0);
+    }
 
     const comparison: AnnualCategoryTotal[] = [
       ...expenseCategories,

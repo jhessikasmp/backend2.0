@@ -146,9 +146,10 @@ export async function generateAnnualReportPDF(
     doc.moveDown();
 
     // Totais principais
-    doc.fontSize(14).text('Totais Gerais');
-    doc.fontSize(12).text(`Salários (Total Anual): ${fmtBRL(data.salariesTotalBRL)}`);
-    doc.text(`Despesas (Total Anual - pessoais): ${fmtBRL(data.expensesTotalBRL)}`);
+  doc.fontSize(14).text('Totais Gerais');
+  doc.fontSize(12).text(`Salários (Total Anual): ${fmtBRL(data.salariesTotalBRL)}`);
+  // Inclui despesas pessoais + entradas de fundos como despesas
+  doc.text(`Despesas (Total Anual): ${fmtBRL(data.expensesTotalBRL)}`);
     doc.moveDown();
 
     // Salários por usuário
