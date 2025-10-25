@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { generateMonthlyReportPDF, MonthlyReportUser, generateAnnualReportPDF, AnnualReportData, AnnualCategoryTotal } from '../services/pdfReportService';
+import { generateMonthlyReportPDF, MonthlyReportUser, generateAnnualReportPDF, AnnualReportData, AnnualCategoryTotal, CategoryTotal } from '../services/pdfReportService';
 import User from '../models/User';
 import Salary from '../models/Salary';
 import Expense from '../models/Expense';
@@ -8,11 +8,11 @@ import Investment from '../models/Investment';
 import EmergencyEntry from '../models/EmergencyEntry';
 import ViagemEntry from '../models/ViagemEntry';
 import CarroEntry from '../models/CarroEntry';
-import MesadaEntry from '../models/MesadaEntry';
+// Mesada removida do relatório
 import EmergencyExpense from '../models/EmergencyExpense';
 import ViagemExpense from '../models/ViagemExpense';
 import CarroExpense from '../models/CarroExpense';
-import MesadaExpense from '../models/MesadaExpense';
+// Mesada removida do relatório
 
 // Relatório customizado com período específico
 export async function generateCustomPeriodReport(req: Request, res: Response): Promise<void> {
@@ -50,8 +50,8 @@ export async function generateCustomPeriodReport(req: Request, res: Response): P
     }
 
     // Buscar dados dos usuários
-    const users = await User.find();
-    const reportData: MonthlyReportUser[] = [];
+  const users = await User.find();
+  const reportData: MonthlyReportUser[] = [];
 
     // Conversão de moedas (igual ao sistema existente)
     const EUR_TO_BRL = 1 / 0.18; // ~5.5555
@@ -83,45 +83,56 @@ export async function generateCustomPeriodReport(req: Request, res: Response): P
     };
 
     for (const user of users) {
-  console.log(`Gerando dados para usuário: ${user._id} - ${user.name} (${startDateRaw} a ${endDateRaw})`);
-      
-      // Buscar salários do período
+      console.log(`Gerando dados para usuário: ${user._id} - ${user.name} (${startDateRaw} a ${endDateRaw})`);
+
+      // Salários no período
       const salaries = await Salary.find({
         user: user._id,
         date: { $gte: start, $lte: end }
       });
       const salary = salaries.reduce((sum, s) => sum + s.value, 0);
 
-      // Despesas do período
-      const expenses = await Expense.find({
-        user: user._id,
-        date: { $gte: start, $lte: end }
-      });
-      const expensesTotal = expenses.reduce((sum, exp) => sum + exp.value, 0);
+      // Despesas por categoria no período
+      const expensesAgg = await Expense.aggregate([
+        { $match: { user: user._id, date: { $gte: start, $lte: end } } },
+        { $group: { _id: '$category', total: { $sum: '$value' } } },
+        { $sort: { total: -1 } }
+      ]);
+      const expensesByCategory: CategoryTotal[] = expensesAgg.map((c: any) => ({ label: c._id, total: c.total }));
+      const expensesTotal = expensesByCategory.reduce((a, b) => a + b.total, 0);
 
-      // Outras saídas do período
-      const [invEntries, emeSum, viaSum, carSum, mesSum] = await Promise.all([
-        InvestmentEntry.find({ user: user._id, date: { $gte: start, $lte: end } }),
+      // Saldos dos fundos até o fim do período (acumulado)
+      const [emeInAgg, emeOutAgg, viaInAgg, viaOutAgg, carInAgg, carOutAgg] = await Promise.all([
         EmergencyEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: start, $lte: end } } },
+          { $match: { user: user._id, data: { $lte: end } } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        EmergencyExpense.aggregate([
+          { $match: { user: user._id, data: { $lte: end } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         ViagemEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: start, $lte: end } } },
+          { $match: { user: user._id, data: { $lte: end } } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        ViagemExpense.aggregate([
+          { $match: { user: user._id, data: { $lte: end } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         CarroEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: start, $lte: end } } },
+          { $match: { user: user._id, data: { $lte: end } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
-        MesadaEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: start, $lte: end } } },
+        CarroExpense.aggregate([
+          { $match: { user: user._id, data: { $lte: end } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ])
       ]);
-
-      const invEntriesTotalBRL = invEntries.reduce((sum, e: any) => sum + toBRL(e.value, e.moeda), 0);
-      const entriesTotal = invEntriesTotalBRL + (emeSum[0]?.total || 0) + (viaSum[0]?.total || 0) + (carSum[0]?.total || 0) + (mesSum[0]?.total || 0);
+      const fundBalances = {
+        emergencyBRL: (emeInAgg[0]?.total || 0) - (emeOutAgg[0]?.total || 0),
+        viagemBRL: (viaInAgg[0]?.total || 0) - (viaOutAgg[0]?.total || 0),
+        carroBRL: (carInAgg[0]?.total || 0) - (carOutAgg[0]?.total || 0),
+      };
 
       // Total de ativos (snapshot até o final do período)
       const investments = await Investment.find({ user: user._id, data: { $lte: end } });
@@ -132,11 +143,12 @@ export async function generateCustomPeriodReport(req: Request, res: Response): P
         name: user.name,
         email: user.email,
         salary,
-        expenses: expensesTotal,
-        entriesTotal,
+        expensesTotal,
+        expensesByCategory,
+        fundBalances,
         assetsTotalBRL,
         assetsTotalEUR,
-        balance: salary - (expensesTotal + entriesTotal),
+        balance: salary - expensesTotal,
       });
     }
 
@@ -179,8 +191,8 @@ export async function generateMonthlyReportDownload(req: Request, res: Response)
     const firstDay = new Date(targetYear, targetMonthNum - 1, 1);
     const lastDay = new Date(targetYear, targetMonthNum, 0, 23, 59, 59, 999);
 
-    const users = await User.find();
-    const reportData: MonthlyReportUser[] = [];
+  const users = await User.find();
+  const reportData: MonthlyReportUser[] = [];
 
     const EUR_TO_BRL = 1 / 0.18;
     const toBRL = (valor: number, moeda?: string): number => {
@@ -203,41 +215,56 @@ export async function generateMonthlyReportDownload(req: Request, res: Response)
     };
 
     for (const user of users) {
-      const salaryDoc = await Salary.findOne({
+      // Salário do mês (assume 1 por mês; se houver múltiplos, some)
+      const salariesMonth = await Salary.find({
         user: user._id,
         date: { $gte: firstDay, $lte: lastDay }
       });
-      const salary = salaryDoc ? salaryDoc.value : 0;
+      const salary = salariesMonth.reduce((sum, s) => sum + s.value, 0);
 
-      const expensesArr = await Expense.find({
-        user: user._id,
-        date: { $gte: firstDay, $lte: lastDay }
-      });
-      const expenses = expensesArr.reduce((sum, exp) => sum + exp.value, 0);
+      // Despesas por categoria (apenas Expense)
+      const expensesAgg = await Expense.aggregate([
+        { $match: { user: user._id, date: { $gte: firstDay, $lte: lastDay } } },
+        { $group: { _id: '$category', total: { $sum: '$value' } } },
+        { $sort: { total: -1 } }
+      ]);
+      const expensesByCategory: CategoryTotal[] = expensesAgg.map((c: any) => ({ label: c._id, total: c.total }));
+      const expensesTotal = expensesByCategory.reduce((a, b) => a + b.total, 0);
 
-      const [invEntries, emeSum, viaSum, carSum, mesSum] = await Promise.all([
-        InvestmentEntry.find({ user: user._id, date: { $gte: firstDay, $lte: lastDay } }),
+      // Fundos - Saldo até o fim do mês (entradas acumuladas - despesas acumuladas)
+      const [emeInAgg, emeOutAgg, viaInAgg, viaOutAgg, carInAgg, carOutAgg] = await Promise.all([
         EmergencyEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: firstDay, $lte: lastDay } } },
+          { $match: { user: user._id, data: { $lte: lastDay } } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        EmergencyExpense.aggregate([
+          { $match: { user: user._id, data: { $lte: lastDay } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         ViagemEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: firstDay, $lte: lastDay } } },
+          { $match: { user: user._id, data: { $lte: lastDay } } },
+          { $group: { _id: null, total: { $sum: '$valor' } } }
+        ]),
+        ViagemExpense.aggregate([
+          { $match: { user: user._id, data: { $lte: lastDay } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
         CarroEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: firstDay, $lte: lastDay } } },
+          { $match: { user: user._id, data: { $lte: lastDay } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ]),
-        MesadaEntry.aggregate([
-          { $match: { user: user._id, data: { $gte: firstDay, $lte: lastDay } } },
+        CarroExpense.aggregate([
+          { $match: { user: user._id, data: { $lte: lastDay } } },
           { $group: { _id: null, total: { $sum: '$valor' } } }
         ])
       ]);
+      const fundBalances = {
+        emergencyBRL: (emeInAgg[0]?.total || 0) - (emeOutAgg[0]?.total || 0),
+        viagemBRL: (viaInAgg[0]?.total || 0) - (viaOutAgg[0]?.total || 0),
+        carroBRL: (carInAgg[0]?.total || 0) - (carOutAgg[0]?.total || 0),
+      };
 
-      const invEntriesTotalBRL = invEntries.reduce((sum, e: any) => sum + toBRL(e.value, e.moeda), 0);
-      const entriesTotal = invEntriesTotalBRL + (emeSum[0]?.total || 0) + (viaSum[0]?.total || 0) + (carSum[0]?.total || 0) + (mesSum[0]?.total || 0);
-
+      // Investimentos: montante de ativos em BRL e EUR (snapshot até o fim do mês)
       const investments = await Investment.find({ user: user._id, data: { $lte: lastDay } });
       const assetsTotalBRL = investments.reduce((sum, inv) => sum + toBRL(inv.valor, inv.moeda), 0);
       const assetsTotalEUR = investments.reduce((sum, inv) => sum + toEUR(inv.valor, inv.moeda), 0);
@@ -246,11 +273,12 @@ export async function generateMonthlyReportDownload(req: Request, res: Response)
         name: user.name,
         email: user.email,
         salary,
-        expenses,
-        entriesTotal,
+        expensesTotal,
+        expensesByCategory,
+        fundBalances,
         assetsTotalBRL,
         assetsTotalEUR,
-        balance: salary - (expenses + entriesTotal),
+        balance: salary - expensesTotal,
       });
     }
 
@@ -278,11 +306,23 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
     const end = new Date(targetYear, 11, 31, 23, 59, 59, 999);
 
     // Aggregações anuais
-    const salariesAgg = await Salary.aggregate([
-      { $match: { date: { $gte: start, $lte: end } } },
-      { $group: { _id: null, total: { $sum: '$value' } } }
+    const [salariesAgg, salariesByUserAgg, users] = await Promise.all([
+      Salary.aggregate([
+        { $match: { date: { $gte: start, $lte: end } } },
+        { $group: { _id: null, total: { $sum: '$value' } } }
+      ]),
+      Salary.aggregate([
+        { $match: { date: { $gte: start, $lte: end } } },
+        { $group: { _id: '$user', total: { $sum: '$value' } } }
+      ]),
+      User.find({}, { _id: 1, name: 1 })
     ]);
     const salariesTotalBRL = salariesAgg[0]?.total || 0;
+    const userNameById = new Map<string, string>(users.map((u: any) => [String(u._id), u.name]));
+    const salariesByUser = salariesByUserAgg.map((row: any) => ({
+      name: userNameById.get(String(row._id)) || String(row._id),
+      totalBRL: row.total || 0
+    }));
 
     const expensesAgg = await Expense.aggregate([
       { $match: { date: { $gte: start, $lte: end } } },
@@ -290,7 +330,7 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
     ]);
     const expensesTotalBRL = expensesAgg[0]?.total || 0;
 
-    const [invEntriesAgg, emeEntriesAgg, viaEntriesAgg, carEntriesAgg, mesEntriesAgg] = await Promise.all([
+    const [invEntriesAgg, emeEntriesAgg, viaEntriesAgg, carEntriesAgg] = await Promise.all([
       InvestmentEntry.aggregate([
         { $match: { date: { $gte: start, $lte: end } } },
         { $group: { _id: null, total: { $sum: '$value' } } }
@@ -306,10 +346,6 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       CarroEntry.aggregate([
         { $match: { data: { $gte: start, $lte: end } } },
         { $group: { _id: null, total: { $sum: '$valor' } } }
-      ]),
-      MesadaEntry.aggregate([
-        { $match: { data: { $gte: start, $lte: end } } },
-        { $group: { _id: null, total: { $sum: '$valor' } } }
       ])
     ]);
 
@@ -318,11 +354,10 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       emergencyBRL: emeEntriesAgg[0]?.total || 0,
       viagemBRL: viaEntriesAgg[0]?.total || 0,
       carroBRL: carEntriesAgg[0]?.total || 0,
-      mesadaBRL: mesEntriesAgg[0]?.total || 0,
     };
     const fundEntriesTotal = Object.values(fundEntries).reduce((a, b) => a + (b as number), 0);
 
-    const [emeExpAgg, viaExpAgg, carExpAgg, mesExpAgg] = await Promise.all([
+    const [emeExpAgg, viaExpAgg, carExpAgg] = await Promise.all([
       EmergencyExpense.aggregate([
         { $match: { data: { $gte: start, $lte: end } } },
         { $group: { _id: null, total: { $sum: '$valor' } } }
@@ -334,10 +369,6 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       CarroExpense.aggregate([
         { $match: { data: { $gte: start, $lte: end } } },
         { $group: { _id: null, total: { $sum: '$valor' } } }
-      ]),
-      MesadaExpense.aggregate([
-        { $match: { data: { $gte: start, $lte: end } } },
-        { $group: { _id: null, total: { $sum: '$valor' } } }
       ])
     ]);
 
@@ -345,7 +376,6 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       emergencyBRL: emeExpAgg[0]?.total || 0,
       viagemBRL: viaExpAgg[0]?.total || 0,
       carroBRL: carExpAgg[0]?.total || 0,
-      mesadaBRL: mesExpAgg[0]?.total || 0,
     };
     const fundExpensesTotal = Object.values(fundExpenses).reduce((a, b) => a + (b as number), 0);
 
@@ -361,7 +391,6 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       { label: 'Fundo: Emergência (despesas)', total: fundExpenses.emergencyBRL },
       { label: 'Fundo: Viagem (despesas)', total: fundExpenses.viagemBRL },
       { label: 'Fundo: Carro (despesas)', total: fundExpenses.carroBRL },
-      { label: 'Fundo: Mesada (despesas)', total: fundExpenses.mesadaBRL },
     ].sort((a, b) => b.total - a.total);
     
     const biggestSpending = comparison[0];
@@ -370,6 +399,7 @@ export async function generateAnnualReportDownload(req: Request, res: Response):
       year: targetYear,
       salariesTotalBRL,
       expensesTotalBRL,
+      salariesByUser,
       fundEntries: { ...fundEntries, totalBRL: fundEntriesTotal },
       fundExpenses: { ...fundExpenses, totalBRL: fundExpensesTotal },
       expenseCategories,

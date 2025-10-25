@@ -1,16 +1,27 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 
+export interface CategoryTotal {
+  label: string;
+  total: number;
+}
+
 export interface MonthlyReportUser {
   name: string;
   email?: string;
   salary: number;
-  expenses: number;
-  entriesTotal?: number;
+  expensesTotal: number;
+  expensesByCategory?: CategoryTotal[];
   // Total de ativos de investimento convertido para BRL
   assetsTotalBRL?: number;
   // Total de ativos de investimento convertido para EUR
   assetsTotalEUR?: number;
+  // Saldos dos fundos (entradas - despesas)
+  fundBalances?: {
+    emergencyBRL: number;
+    viagemBRL: number;
+    carroBRL: number;
+  };
   balance: number;
 }
 
@@ -31,26 +42,45 @@ export async function generateMonthlyReportPDF(
     });
     doc.on('error', reject);
 
-    doc.fontSize(20).text(`Relatório Mensal - ${month}/${year}`, { align: 'center' });
+  doc.fontSize(20).text(`Relatório Mensal - ${month}/${year}`, { align: 'center' });
     doc.moveDown();
 
-    const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    const fmtEUR = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'EUR' });
+  const fmt = (n: number) => (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmtEUR = (n: number) => (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'EUR' });
 
     users.forEach((user, idx) => {
       doc.fontSize(14).text(`Usuário: ${user.name}${user.email ? ` (${user.email})` : ''}`);
-      doc.fontSize(12).text(`Salário: ${fmt(user.salary)}`);
-      doc.text(`Despesas: ${fmt(user.expenses)}`);
-      if (typeof user.entriesTotal === 'number') {
-        doc.text(`Outras saídas (investimentos, emergência, viagens, carro, mesada): ${fmt(user.entriesTotal)}`);
+      doc.fontSize(12).text(`Salário do mês: ${fmt(user.salary)}`);
+      
+      // Despesas por categoria
+      doc.text(`Despesas por categoria:`);
+      if (user.expensesByCategory && user.expensesByCategory.length > 0) {
+        user.expensesByCategory.forEach((c) => {
+          doc.text(` • ${c.label}: ${fmt(c.total)}`);
+        });
+      } else {
+        doc.text(' • Sem despesas registradas no período.');
       }
+      doc.text(`Total de Despesas: ${fmt(user.expensesTotal)}`);
+
+      // Fundos - saldos
+      if (user.fundBalances) {
+        doc.moveDown(0.5);
+        doc.text(`Fundos - Saldos:`);
+        doc.text(` • Emergência: ${fmt(user.fundBalances.emergencyBRL)}`);
+        doc.text(` • Viagem: ${fmt(user.fundBalances.viagemBRL)}`);
+        doc.text(` • Carro: ${fmt(user.fundBalances.carroBRL)}`);
+      }
+
+      // Investimentos (montante de ativos em BRL e EUR)
       if (typeof user.assetsTotalBRL === 'number' || typeof user.assetsTotalEUR === 'number') {
         const parts: string[] = [];
-        if (typeof user.assetsTotalBRL === 'number') parts.push(fmt(user.assetsTotalBRL));
-        if (typeof user.assetsTotalEUR === 'number') parts.push(fmtEUR(user.assetsTotalEUR));
-        doc.text(`Total de Ativos (Investimentos): ${parts.join(' | ')}`);
+        if (typeof user.assetsTotalBRL === 'number') parts.push(`BRL: ${fmt(user.assetsTotalBRL)}`);
+        if (typeof user.assetsTotalEUR === 'number') parts.push(`EUR: ${fmtEUR(user.assetsTotalEUR)}`);
+        doc.text(`Ativos (Investimentos): ${parts.join(' | ')}`);
       }
-      doc.text(`Saldo: ${fmt(user.balance)}`);
+      doc.moveDown(0.5);
+      doc.text(`Saldo do Mês (Salário - Despesas): ${fmt(user.balance)}`);
       doc.moveDown();
       if (idx < users.length - 1) doc.moveDown();
     });
@@ -71,13 +101,14 @@ export interface AnnualReportData {
   year: number;
   salariesTotalBRL: number;
   expensesTotalBRL: number;
+  // Lista de salários por usuário (nome e total no ano)
+  salariesByUser: Array<{ name: string; totalBRL: number }>;
   // Entradas por fundo
   fundEntries: {
     investmentBRL: number;
     emergencyBRL: number;
     viagemBRL: number;
     carroBRL: number;
-    mesadaBRL: number;
     totalBRL: number;
   };
   // Despesas por fundo
@@ -85,7 +116,6 @@ export interface AnnualReportData {
     emergencyBRL: number;
     viagemBRL: number;
     carroBRL: number;
-    mesadaBRL: number;
     totalBRL: number;
   };
   // Categorias de despesas pessoais (Expense)
@@ -121,13 +151,24 @@ export async function generateAnnualReportPDF(
     doc.text(`Despesas (Total Anual - pessoais): ${fmtBRL(data.expensesTotalBRL)}`);
     doc.moveDown();
 
+    // Salários por usuário
+    doc.fontSize(14).text('Salários por Usuário (Anual)');
+    doc.fontSize(12);
+    if (!data.salariesByUser || data.salariesByUser.length === 0) {
+      doc.text('Sem salários registrados no ano.');
+    } else {
+      data.salariesByUser.forEach((s) => {
+        doc.text(`${s.name}: ${fmtBRL(s.totalBRL)}`);
+      });
+    }
+    doc.moveDown();
+
     // Entradas por fundo
     doc.fontSize(14).text('Entradas por Fundo (Total Anual)');
     doc.fontSize(12).text(`Investimentos (aportes): ${fmtBRL(data.fundEntries.investmentBRL)}`);
     doc.text(`Emergência (entradas): ${fmtBRL(data.fundEntries.emergencyBRL)}`);
     doc.text(`Viagem (entradas): ${fmtBRL(data.fundEntries.viagemBRL)}`);
     doc.text(`Carro (entradas): ${fmtBRL(data.fundEntries.carroBRL)}`);
-    doc.text(`Mesada (entradas): ${fmtBRL(data.fundEntries.mesadaBRL)}`);
     doc.text(`Total de Entradas (Fundos): ${fmtBRL(data.fundEntries.totalBRL)}`);
     doc.moveDown();
 
@@ -136,7 +177,6 @@ export async function generateAnnualReportPDF(
     doc.fontSize(12).text(`Emergência (despesas): ${fmtBRL(data.fundExpenses.emergencyBRL)}`);
     doc.text(`Viagem (despesas): ${fmtBRL(data.fundExpenses.viagemBRL)}`);
     doc.text(`Carro (despesas): ${fmtBRL(data.fundExpenses.carroBRL)}`);
-    doc.text(`Mesada (despesas): ${fmtBRL(data.fundExpenses.mesadaBRL)}`);
     doc.text(`Total de Despesas (Fundos): ${fmtBRL(data.fundExpenses.totalBRL)}`);
     doc.moveDown();
 
