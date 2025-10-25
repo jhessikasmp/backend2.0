@@ -14,22 +14,28 @@ export interface MonthlyReportUser {
   balance: number;
 }
 
+// Gerar PDF como buffer para download direto
 export async function generateMonthlyReportPDF(
   users: MonthlyReportUser[],
   month: string,
-  year: number,
-  outputPath: string
-): Promise<void> {
+  year: number
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument();
-    const stream = fs.createWriteStream(outputPath);
-    doc.pipe(stream);
+    const buffers: Buffer[] = [];
+
+    doc.on('data', (chunk) => buffers.push(chunk));
+    doc.on('end', () => {
+      const pdfBuffer = Buffer.concat(buffers);
+      resolve(pdfBuffer);
+    });
+    doc.on('error', reject);
 
     doc.fontSize(20).text(`Relatório Mensal - ${month}/${year}`, { align: 'center' });
     doc.moveDown();
 
-  const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const fmtEUR = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'EUR' });
+    const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const fmtEUR = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'EUR' });
 
     users.forEach((user, idx) => {
       doc.fontSize(14).text(`Usuário: ${user.name}${user.email ? ` (${user.email})` : ''}`);
@@ -50,8 +56,6 @@ export async function generateMonthlyReportPDF(
     });
 
     doc.end();
-    stream.on('finish', resolve);
-    stream.on('error', reject);
   });
 }
 
@@ -92,13 +96,18 @@ export interface AnnualReportData {
 }
 
 export async function generateAnnualReportPDF(
-  data: AnnualReportData,
-  outputPath: string
-): Promise<void> {
+  data: AnnualReportData
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument();
-    const stream = fs.createWriteStream(outputPath);
-    doc.pipe(stream);
+    const buffers: Buffer[] = [];
+
+    doc.on('data', (chunk) => buffers.push(chunk));
+    doc.on('end', () => {
+      const pdfBuffer = Buffer.concat(buffers);
+      resolve(pdfBuffer);
+    });
+    doc.on('error', reject);
 
     const fmtBRL = (n: number) => (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -159,7 +168,5 @@ export async function generateAnnualReportPDF(
     }
 
     doc.end();
-    stream.on('finish', resolve);
-    stream.on('error', reject);
   });
 }

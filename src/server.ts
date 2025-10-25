@@ -1,12 +1,8 @@
 import mesadaEntryRoutes from './routes/mesadaEntry';
-import monthlyReportRoutes from './routes/monthlyReportRoutes';
-import { generateAndSendMonthlyReport } from './controllers/monthlyReportController';
-import cron from 'node-cron';
+import reportRoutes from './routes/reportRoutes';
 import mesadaExpenseRoutes from './routes/mesadaExpense';
 import carroEntryRoutes from './routes/carroEntry';
 import carroExpenseRoutes from './routes/carroExpense';
-// ...existing code...
-// ...existing code...
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -61,7 +57,6 @@ import viagemEntryRoutes from './routes/viagemEntry';
 import viagemExpenseRoutes from './routes/viagemExpense';
 import summaryRoutes from './routes/summaryRoutes';
 import investmentAnnualReturnRoutes from './routes/investmentAnnualReturnRoutes';
-import annualReportRoutes from './routes/annualReportRoutes';
 
 // Routes
 app.use('/api/users', userRoutes);
@@ -79,10 +74,9 @@ app.use('/api/carro-entry', carroEntryRoutes);
 app.use('/api/carro-expense', carroExpenseRoutes);
 app.use('/api/mesada-entry', mesadaEntryRoutes);
 app.use('/api/mesada-expense', mesadaExpenseRoutes);
-app.use('/api/monthly-report', monthlyReportRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/summary', summaryRoutes);
 app.use('/api/investment-returns', investmentAnnualReturnRoutes);
-app.use('/api/annual-report', annualReportRoutes);
 // app.use('/api/transactions', require('./routes/transactions'));
 // app.use('/api/categories', require('./routes/categories'));
 // app.use('/api/reports', require('./routes/reports'));
@@ -151,34 +145,6 @@ process.on('SIGINT', async () => {
   console.log('🛑 Recebido SIGINT, encerrando servidor...');
   await database.disconnect();
   process.exit(0);
-});
-
-// Agendamento automático: todo dia 1 às 00:10
-cron.schedule('10 0 1 * *', async () => {
-  console.log('⏰ Gerando relatório mensal automático...');
-  // Chama a função diretamente, sem req/res
-  try {
-    await generateAndSendMonthlyReport({} as any, {
-      json: (data: any) => console.log('Relatório mensal gerado e enviado:', data),
-      status: (code: number) => ({ json: (data: any) => console.log('Erro ao gerar relatório:', code, data) })
-    } as any);
-  } catch (err) {
-    console.error('Erro no agendamento do relatório mensal:', err);
-  }
-});
-
-// Agendamento anual: 31 de dezembro às 23:50
-cron.schedule('50 23 31 12 *', async () => {
-  console.log('⏰ Gerando relatório anual automático...');
-  try {
-    const { generateAndSendAnnualReport } = await import('./controllers/annualReportController');
-    await generateAndSendAnnualReport({} as any, {
-      json: (data: any) => console.log('Relatório anual gerado e enviado:', data),
-      status: (code: number) => ({ json: (data: any) => console.log('Erro ao gerar relatório anual:', code, data) })
-    } as any);
-  } catch (err) {
-    console.error('Erro no agendamento do relatório anual:', err);
-  }
 });
 
 // Start the application
