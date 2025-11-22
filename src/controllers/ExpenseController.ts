@@ -221,6 +221,19 @@ export const getUserAllExpenses = async (req: Request, res: Response) => {
   }
 };
 
+// DELETE /api/expense/:id - Remove uma despesa geral pelo id
+export const deleteExpense = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'ID é obrigatório' });
+    const removed = await Expense.findByIdAndDelete(id);
+    if (!removed) return res.status(404).json({ success: false, message: 'Despesa não encontrada' });
+    return res.json({ success: true, message: 'Despesa removida', data: removed });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao remover despesa', error });
+  }
+};
+
 // Lista todas as despesas de todos os usuários
 export const getAllExpenses = async (req: Request, res: Response) => {
   try {

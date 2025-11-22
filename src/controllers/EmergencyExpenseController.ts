@@ -67,3 +67,16 @@ export const getEmergencyExpensesGrouped = async (req: Request, res: Response) =
     res.status(500).json({ success: false, message: 'Erro ao agrupar despesas', error: err });
   }
 };
+
+// DELETE /api/emergency-expense/:id - Remove uma despesa de emergência pelo id
+export const deleteEmergencyExpense = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'ID é obrigatório' });
+    const removed = await EmergencyExpense.findByIdAndDelete(id);
+    if (!removed) return res.status(404).json({ success: false, message: 'Despesa não encontrada' });
+    return res.json({ success: true, message: 'Despesa removida', data: removed });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erro ao remover despesa', error: err });
+  }
+};

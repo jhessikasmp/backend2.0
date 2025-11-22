@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addExpense, getUserCurrentMonthExpenses, getCurrentMonthTotalExpenses, getUserAllExpenses, getAllUsersMonthlyExpenses, getUserAnnualExpenses, getAllExpenses, debugAllExpenses, getAnnualExpensesByUser, getTotalWithEntries, getCurrentMonthTotalWithEntries, getAnnualTotalWithEntriesByUser } from '../controllers/ExpenseController';
+import { addExpense, getUserCurrentMonthExpenses, getCurrentMonthTotalExpenses, getUserAllExpenses, getAllUsersMonthlyExpenses, getUserAnnualExpenses, getAllExpenses, debugAllExpenses, getAnnualExpensesByUser, getTotalWithEntries, getCurrentMonthTotalWithEntries, getAnnualTotalWithEntriesByUser, deleteExpense } from '../controllers/ExpenseController';
 
 const router = Router();
 // GET /api/expense/annual-total-with-entries/:year - Soma anual de despesas + entradas de todas as coleções por usuário
@@ -34,5 +34,8 @@ router.get('/current-month-total', getCurrentMonthTotalExpenses);
 
 // GET /api/expense/monthly-total - Soma total das despesas de todos os usuários agrupado por mês
 router.get('/monthly-total', getAllUsersMonthlyExpenses);
+
+// DELETE /api/expense/:id - remover despesa
+router.delete('/:id', deleteExpense);
 
 export default router;

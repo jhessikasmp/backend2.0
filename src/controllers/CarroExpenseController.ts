@@ -55,3 +55,16 @@ export const getCarroExpensesGrouped = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Erro ao agrupar despesas', error: err });
   }
 };
+
+// DELETE /api/carro-expense/:id - Remove uma despesa de carro pelo id
+export const deleteCarroExpense = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'ID é obrigatório' });
+    const removed = await CarroExpense.findByIdAndDelete(id);
+    if (!removed) return res.status(404).json({ success: false, message: 'Despesa não encontrada' });
+    return res.json({ success: true, message: 'Despesa removida', data: removed });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erro ao remover despesa', error: err });
+  }
+};

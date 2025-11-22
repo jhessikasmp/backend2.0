@@ -43,3 +43,17 @@ export const getCurrentMonthTotal = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Erro ao buscar salários do mês', error });
   }
 };
+
+// GET list of salary documents for current month (with populated user)
+export const getCurrentMonthList = async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const salaries = await Salary.find({ date: { $gte: firstDay, $lte: lastDay } }).populate('user', 'name email');
+    res.json({ success: true, data: salaries });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro ao listar salários do mês', error });
+  }
+};
+

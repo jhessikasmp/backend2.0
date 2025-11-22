@@ -67,3 +67,16 @@ export const getUserCurrentMonthSalary = async (req: Request, res: Response) => 
     res.status(500).json({ success: false, message: 'Erro ao buscar salário', error });
   }
 };
+
+// DELETE /api/salary/user/:id - remove a salary document by id
+export const deleteSalaryById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'ID necessário' });
+    const deleted = await Salary.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ success: false, message: 'Salário não encontrado' });
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Erro ao deletar salário', error });
+  }
+};
